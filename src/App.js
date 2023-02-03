@@ -18,6 +18,7 @@ import { useState } from "react";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
 import EditIcon from "@mui/icons-material/Edit";
+import ConfirmDialog from "./components/ConfirmDialog";
 
 const GET_USERS = gql`
   query {
@@ -40,6 +41,12 @@ const CREATE_USER_MUTATION = gql`
       username
       email
     }
+  }
+`;
+
+const DELETE_USER_MUTATION = gql`
+  mutation DeleteUser($id: ID!) {
+    deleteUser(id: $id)
   }
 `;
 
@@ -96,9 +103,15 @@ function App() {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(PAGE_SIZE[page]);
   const [values, setValues] = useState(initialValue);
+  const [confirmDialog, setConfirmDialog] = useState({
+    isOpen: false,
+    title: "",
+    subTitle: "",
+  });
 
   const { data, loading } = useQuery(GET_USERS);
   const [createUser] = useMutation(CREATE_USER_MUTATION);
+  const [deleteUser] = useMutation(DELETE_USER_MUTATION);
 
   if (loading) return <div>Loading...</div>;
 
@@ -196,7 +209,16 @@ function App() {
                       <EditIcon />
                     </Box>
                   </EditMenuItem>
-                  <DeleteMenuItem>
+                  <DeleteMenuItem
+                    onClick={() =>
+                      setConfirmDialog({
+                        isOpen: true,
+                        title: "Are you sure?",
+                        subTitle: "You can't undo this",
+                        onConfirm: () => deleteUser(user.id),
+                      })
+                    }
+                  >
                     <Typography>Delete User</Typography>
                     <Box>
                       <DeleteOutlineRoundedIcon />
@@ -218,6 +240,10 @@ function App() {
           </TableRow>
         </TableBody>
       </Table>
+      <ConfirmDialog
+        confirmDialog={confirmDialog}
+        setConfirmDialog={setConfirmDialog}
+      />
     </Box>
   );
 }
