@@ -106,7 +106,7 @@ const TableEditSelect = styled(Select)({
   },
 });
 
-const initialValue = {
+const initialValues = {
   name: "",
   username: "",
   email: "",
@@ -115,7 +115,7 @@ const initialValue = {
 function App() {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(PAGE_SIZE[page]);
-  const [values, setValues] = useState(initialValue);
+  const [values, setValues] = useState(initialValues);
   const [confirmDialog, setConfirmDialog] = useState({
     isOpen: false,
     title: "",
@@ -157,7 +157,13 @@ function App() {
   };
 
   const resetForm = () => {
-    setValues(initialValue);
+    setValues(initialValues);
+  };
+
+  const closeModal = () => {
+    setOpenModal(false);
+    setUserForEdit(null);
+    setValues(initialValues);
   };
 
   const recordsAfterPaging = (data) => {
@@ -276,6 +282,7 @@ function App() {
           setValues={setValues}
           updateUser={updateUser}
           data={data}
+          closeModal={closeModal}
         />
       </Modal>
     </Box>

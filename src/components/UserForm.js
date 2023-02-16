@@ -3,13 +3,12 @@ import React, { useEffect } from "react";
 
 const UserForm = (props) => {
   const {
-    setOpenModal,
     userForEdit,
     setValues,
     values,
     handleInputChange,
     updateUser,
-    data,
+    closeModal,
   } = props;
 
   useEffect(() => {
@@ -28,6 +27,7 @@ const UserForm = (props) => {
         },
       },
     });
+    closeModal();
   };
 
   return (
@@ -73,7 +73,7 @@ const UserForm = (props) => {
               color="error"
               sx={{ margin: "4px", textTransform: "none" }}
               onClick={() => {
-                setOpenModal(false);
+                closeModal();
               }}
             >
               Cancel
