@@ -19,6 +19,8 @@ import MoreVertIcon from "@mui/icons-material/MoreVert";
 import DeleteOutlineRoundedIcon from "@mui/icons-material/DeleteOutlineRounded";
 import EditIcon from "@mui/icons-material/Edit";
 import ConfirmDialog from "./components/ConfirmDialog";
+import UserForm from "./components/UserForm";
+import Modal from "./components/Modal";
 
 const GET_USERS = gql`
   query {
@@ -47,6 +49,17 @@ const CREATE_USER_MUTATION = gql`
 const DELETE_USER_MUTATION = gql`
   mutation DeleteUser($id: ID!) {
     deleteUser(id: $id)
+  }
+`;
+
+const UPDATE_USER_MUTATION = gql`
+  mutation UpdateUser($id: ID!, $input: UpdateUserInput!) {
+    updateUser(id: $id, input: $input) {
+      id
+      name
+      username
+      email
+    }
   }
 `;
 
@@ -108,10 +121,13 @@ function App() {
     title: "",
     subTitle: "",
   });
+  const [openModal, setOpenModal] = useState(false);
+  const [userForEdit, setUserForEdit] = useState(null);
 
   const { data, loading } = useQuery(GET_USERS);
   const [createUser] = useMutation(CREATE_USER_MUTATION);
   const [deleteUser] = useMutation(DELETE_USER_MUTATION);
+  const [updateUser] = useMutation(UPDATE_USER_MUTATION);
 
   if (loading) return <div>Loading...</div>;
 
@@ -126,6 +142,11 @@ function App() {
     }));
   };
 
+  const openEditForm = (user) => {
+    setUserForEdit(user);
+    setOpenModal(true);
+  };
+
   const handleChangePage = (event, newPage) => {
     setPage(newPage);
   };
@@ -138,10 +159,6 @@ function App() {
   const recordsAfterPaging = (data) => {
     return data.slice(page * rowsPerPage, (page + 1) * rowsPerPage);
   };
-
-  let name;
-  let username;
-  let email;
 
   return (
     <Box>
@@ -176,9 +193,9 @@ function App() {
             createUser({
               variables: {
                 input: {
-                  name,
-                  username,
-                  email,
+                  name: values.name,
+                  username: values.username,
+                  email: values.email,
                 },
               },
             });
@@ -203,7 +220,7 @@ function App() {
               <TableCell>{user.email}</TableCell>
               <TableCell sx={{ textAlign: "right" }}>
                 <TableEditSelect IconComponent={MoreVertIcon}>
-                  <EditMenuItem>
+                  <EditMenuItem onClick={() => openEditForm(user)}>
                     <Typography>Edit User</Typography>
                     <Box>
                       <EditIcon />
@@ -215,7 +232,8 @@ function App() {
                         isOpen: true,
                         title: "Are you sure?",
                         subTitle: "You can't undo this",
-                        onConfirm: () => deleteUser(user.id),
+                        onConfirm: () =>
+                          deleteUser({ variables: { id: user.id } }),
                       })
                     }
                   >
@@ -244,6 +262,17 @@ function App() {
         confirmDialog={confirmDialog}
         setConfirmDialog={setConfirmDialog}
       />
+      <Modal openModal={openModal} setOpenModal={setOpenModal}>
+        <UserForm
+          values={values}
+          handleInputChange={handleInputChange}
+          setOpenModal={setOpenModal}
+          userForEdit={userForEdit}
+          setValues={setValues}
+          updateUser={updateUser}
+          data={data}
+        />
+      </Modal>
     </Box>
   );
 }
