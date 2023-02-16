@@ -156,6 +156,10 @@ function App() {
     setPage(0);
   };
 
+  const resetForm = () => {
+    setValues(initialValue);
+  };
+
   const recordsAfterPaging = (data) => {
     return data.slice(page * rowsPerPage, (page + 1) * rowsPerPage);
   };
@@ -199,6 +203,7 @@ function App() {
                 },
               },
             });
+            resetForm();
           }}
         >
           Create User
