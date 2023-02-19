@@ -17,6 +17,7 @@ const UserForm = (props) => {
 
   const handleSubmit = (event) => {
     event.preventDefault();
+
     updateUser({
       variables: {
         id: values.id,

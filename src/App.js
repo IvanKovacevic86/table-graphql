@@ -12,7 +12,10 @@ import {
   TextField,
   styled,
   Typography,
+  InputAdornment,
+  TableSortLabel,
 } from "@mui/material";
+import SearchIcon from "@mui/icons-material/Search";
 import { useQuery, gql, useMutation } from "@apollo/client";
 import { useState } from "react";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
@@ -123,8 +126,13 @@ function App() {
   });
   const [openModal, setOpenModal] = useState(false);
   const [userForEdit, setUserForEdit] = useState(null);
+  const [search, setSearch] = useState("");
+  const [order, setOrder] = useState();
+  const [orderBy, setOrderBy] = useState();
 
   const { data, loading } = useQuery(GET_USERS);
+  const { data: searchData } = useQuery(GET_USERS);
+
   const [createUser] = useMutation(CREATE_USER_MUTATION);
   const [deleteUser] = useMutation(DELETE_USER_MUTATION);
   const [updateUser] = useMutation(UPDATE_USER_MUTATION);
@@ -166,12 +174,67 @@ function App() {
     setValues(initialValues);
   };
 
-  const recordsAfterPaging = (data) => {
+  const keys = ["name", "username", "email"];
+
+  const handleSearch = (e) => {
+    if (e.target.value.trim() === "") {
+      setSearch(e.target.value);
+
+      return;
+    }
+    setSearch(e.target.value);
+
+    const filtered = searchData.users.data.filter((item) =>
+      keys.some((key) => item[key].toLowerCase().includes(search.toLowerCase()))
+    );
+
+    return filtered;
+  };
+
+  const handleSortRequest = (column) => {
+    const isAsc = orderBy === column && order === "asc";
+    setOrder(isAsc ? "desc" : "asc");
+    setOrderBy(column);
+  };
+
+  const stableSort = (array, comparator) => {
+    const stabilizedThis = array.map((el, index) => [el, index]);
+    stabilizedThis.sort((a, b) => {
+      const order = comparator(a[0], b[0]);
+      if (order !== 0) return order;
+      return a[1] - b[1];
+    });
+    return stabilizedThis.map((el) => el[0]);
+  };
+
+  const getComparator = (order, orderBy) => {
+    return order === "desc"
+      ? (a, b) => descendingComparator(a, b, orderBy)
+      : (a, b) => -descendingComparator(a, b, orderBy);
+  };
+
+  const descendingComparator = (a, b, orderBy) => {
+    if (b[orderBy] < a[orderBy]) {
+      return -1;
+    }
+    if (b[orderBy] > a[orderBy]) {
+      return 1;
+    }
+
+    return 0;
+  };
+
+  const pagePagination = (data) => {
     return data.slice(page * rowsPerPage, (page + 1) * rowsPerPage);
   };
 
+  const sortingAndPagination = (data, comparator) => {
+    const pagination = pagePagination(data);
+    return stableSort(pagination, comparator);
+  };
+
   return (
-    <Box>
+    <Box ml={2} mr={2}>
       <Box mt={3} mb={3}>
         <TextField
           type="text"
@@ -215,16 +278,58 @@ function App() {
           Create User
         </Button>
       </Box>
+      <Box>
+        <TextField
+          sx={{
+            width: "30%",
+            backgroundColor: "#F0F0F0",
+            marginTop: "1rem",
+            marginBottom: "1rem",
+            border: "none",
+          }}
+          InputProps={{
+            disableUnderline: true,
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchIcon />
+              </InputAdornment>
+            ),
+          }}
+          placeholder="Search by Name or Email"
+          variant="standard"
+          onChange={handleSearch}
+        />
+      </Box>
       <Table>
         <TableHead>
           <TableRow sx={{ backgroundColor: "#D3D3D3" }}>
             {columns.map((column) => (
-              <TableCell key={column.id}>{column.label}</TableCell>
+              <TableCell
+                key={column.id}
+                sortDirection={orderBy === column.id ? order : false}
+              >
+                {column.disableSorting ? (
+                  column.label
+                ) : (
+                  <TableSortLabel
+                    active={orderBy === column.id}
+                    direction={orderBy === column.id ? order : "asc"}
+                    onClick={() => {
+                      handleSortRequest(column.id);
+                    }}
+                  >
+                    {column.label}
+                  </TableSortLabel>
+                )}
+              </TableCell>
             ))}
           </TableRow>
         </TableHead>
         <TableBody>
-          {recordsAfterPaging(data.users.data).map((user) => (
+          {sortingAndPagination(
+            searchData.users.data,
+            getComparator(order, orderBy)
+          ).map((user) => (
             <TableRow key={user.id}>
               <TableCell>{user.name}</TableCell>
               <TableCell>{user.username}</TableCell>
@@ -244,7 +349,12 @@ function App() {
                         title: "Are you sure?",
                         subTitle: "You can't undo this",
                         onConfirm: () =>
-                          deleteUser({ variables: { id: user.id } }),
+                          deleteUser(
+                            { variables: { id: user.id } },
+                            setConfirmDialog({
+                              isOpen: false,
+                            })
+                          ),
                       })
                     }
                   >
