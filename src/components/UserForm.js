@@ -1,30 +1,19 @@
 import { Box, Button, Grid, TextField } from "@mui/material";
-import React, { useEffect } from "react";
+import React from "react";
 
 const UserForm = (props) => {
-  const {
-    userForEdit,
-    setValues,
-    values,
-    handleInputChange,
-    updateUser,
-    closeModal,
-  } = props;
-
-  useEffect(() => {
-    if (userForEdit !== null) setValues({ ...userForEdit });
-  }, [userForEdit, setValues]);
+  const { formik, updateUser, closeModal } = props;
 
   const handleSubmit = (event) => {
     event.preventDefault();
 
     updateUser({
       variables: {
-        id: values.id,
+        id: formik.values.id,
         input: {
-          name: values.name,
-          username: values.username,
-          email: values.email,
+          name: formik.values.name,
+          username: formik.values.username,
+          email: formik.values.email,
         },
       },
     });
@@ -40,24 +29,33 @@ const UserForm = (props) => {
             name="name"
             label="Name"
             sx={{ width: "100%", margin: "8px" }}
-            value={values.name}
-            onChange={handleInputChange}
+            value={formik.values.name}
+            onChange={formik.handleChange}
+            onBlur={formik.handleBlur}
+            error={formik.touched.name && Boolean(formik.errors.name)}
+            helperText={formik.touched.name && formik.errors.name}
           />
           <TextField
             type="text"
             name="username"
             label="UserName"
             sx={{ width: "100%", margin: "8px" }}
-            value={values.username}
-            onChange={handleInputChange}
+            value={formik.values.username}
+            onChange={formik.handleChange}
+            onBlur={formik.handleBlur}
+            error={formik.touched.username && Boolean(formik.errors.username)}
+            helperText={formik.touched.username && formik.errors.username}
           />
           <TextField
             type="email"
             name="email"
             label="Email"
             sx={{ width: "100%", margin: "8px" }}
-            value={values.email}
-            onChange={handleInputChange}
+            value={formik.values.email}
+            onChange={formik.handleChange}
+            onBlur={formik.handleBlur}
+            error={formik.touched.email && Boolean(formik.errors.email)}
+            helperText={formik.touched.email && formik.errors.email}
           />
         </Grid>
         <Grid item>

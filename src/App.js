@@ -24,6 +24,8 @@ import EditIcon from "@mui/icons-material/Edit";
 import ConfirmDialog from "./components/ConfirmDialog";
 import UserForm from "./components/UserForm";
 import Modal from "./components/Modal";
+import { useFormik } from "formik";
+import * as Yup from "yup";
 
 const GET_USERS = gql`
   query {
@@ -118,7 +120,7 @@ const initialValues = {
 function App() {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(PAGE_SIZE[page]);
-  const [values, setValues] = useState(initialValues);
+
   const [confirmDialog, setConfirmDialog] = useState({
     isOpen: false,
     title: "",
@@ -129,25 +131,43 @@ function App() {
   const [search, setSearch] = useState("");
   const [order, setOrder] = useState();
   const [orderBy, setOrderBy] = useState();
+  const [filteredUser, setFilteredUser] = useState([]);
+  const [count, setCount] = useState(1);
 
-  const { data, loading } = useQuery(GET_USERS);
-  const { data: searchData } = useQuery(GET_USERS);
+  const { data, loading } = useQuery(GET_USERS, {
+    onCompleted: (data) => setFilteredUser(data.users.data),
+  });
 
   const [createUser] = useMutation(CREATE_USER_MUTATION);
   const [deleteUser] = useMutation(DELETE_USER_MUTATION);
   const [updateUser] = useMutation(UPDATE_USER_MUTATION);
 
+  const formik = useFormik({
+    initialValues: initialValues,
+    validationSchema: Yup.object().shape({
+      name: Yup.string().required("Name is required"),
+      username: Yup.string().required("Username is required"),
+      email: Yup.string().required("Email is required").email("Invalid email"),
+    }),
+    enableReinitialize: true,
+    onSubmit: () => {
+      createUser({
+        variables: {
+          input: {
+            name: formik.values.name,
+            username: formik.values.username,
+            email: formik.values.email,
+          },
+        },
+      });
+      formik.resetForm();
+    },
+  });
+
   if (loading) return <div>Loading...</div>;
 
-  const handleInputChange = (event) => {
-    event.preventDefault();
-
-    const { name, value } = event.target;
-
-    setValues((state) => ({
-      ...state,
-      [name]: value,
-    }));
+  const getNumberOfUsers = (data) => {
+    return data.users.data.length;
   };
 
   const openEditForm = (user) => {
@@ -164,31 +184,36 @@ function App() {
     setPage(0);
   };
 
-  const resetForm = () => {
-    setValues(initialValues);
-  };
-
   const closeModal = () => {
     setOpenModal(false);
     setUserForEdit(null);
-    setValues(initialValues);
   };
+
+  const dense = false;
+  const emptyRows =
+    page > 0
+      ? Math.max(0, (1 + page) * rowsPerPage - data.users.data.length)
+      : 0;
 
   const keys = ["name", "username", "email"];
 
   const handleSearch = (e) => {
     if (e.target.value.trim() === "") {
       setSearch(e.target.value);
+      setFilteredUser(data.users.data);
+      setCount(getNumberOfUsers(data.users.data));
 
       return;
     }
     setSearch(e.target.value);
 
-    const filtered = searchData.users.data.filter((item) =>
+    const filtered = data.users.data.filter((item) =>
       keys.some((key) => item[key].toLowerCase().includes(search.toLowerCase()))
     );
 
-    return filtered;
+    setFilteredUser(filtered);
+    setPage(0);
+    setCount(getNumberOfUsers(filtered));
   };
 
   const handleSortRequest = (column) => {
@@ -229,8 +254,8 @@ function App() {
   };
 
   const sortingAndPagination = (data, comparator) => {
-    const pagination = pagePagination(data);
-    return stableSort(pagination, comparator);
+    const sorting = stableSort(data, comparator);
+    return pagePagination(sorting);
   };
 
   return (
@@ -241,40 +266,36 @@ function App() {
           placeholder="Name…"
           sx={{ marginRight: "2rem" }}
           name="name"
-          value={values.name}
-          onChange={handleInputChange}
+          value={formik.values.name}
+          onChange={formik.handleChange}
+          onBlur={formik.handleBlur}
+          error={formik.touched.name && Boolean(formik.errors.name)}
+          helperText={formik.touched.name && formik.errors.name}
         />
+
         <TextField
           type="text"
           placeholder="Username"
           sx={{ marginRight: "2rem" }}
           name="username"
-          value={values.username}
-          onChange={handleInputChange}
+          value={formik.values.username}
+          onChange={formik.handleChange}
+          onBlur={formik.handleBlur}
+          error={formik.touched.username && Boolean(formik.errors.username)}
+          helperText={formik.touched.username && formik.errors.username}
         />
         <TextField
           type="email"
           placeholder="Email"
           sx={{ marginRight: "2rem" }}
           name="email"
-          value={values.email}
-          onChange={handleInputChange}
+          value={formik.values.email}
+          onChange={formik.handleChange}
+          onBlur={formik.handleBlur}
+          error={formik.touched.email && Boolean(formik.errors.email)}
+          helperText={formik.touched.email && formik.errors.email}
         />
-        <Button
-          variant="contained"
-          onClick={() => {
-            createUser({
-              variables: {
-                input: {
-                  name: values.name,
-                  username: values.username,
-                  email: values.email,
-                },
-              },
-            });
-            resetForm();
-          }}
-        >
+        <Button variant="contained" onClick={formik.handleSubmit}>
           Create User
         </Button>
       </Box>
@@ -327,7 +348,7 @@ function App() {
         </TableHead>
         <TableBody>
           {sortingAndPagination(
-            searchData.users.data,
+            filteredUser,
             getComparator(order, orderBy)
           ).map((user) => (
             <TableRow key={user.id}>
@@ -367,12 +388,21 @@ function App() {
               </TableCell>
             </TableRow>
           ))}
+          {emptyRows > 0 && (
+            <TableRow
+              style={{
+                height: (dense ? 33 : 84) * emptyRows,
+              }}
+            >
+              <TableCell colSpan={6} />
+            </TableRow>
+          )}
           <TableRow sx={{ backgroundColor: "#D3D3D3" }}>
             <TablePagination
               page={page}
               rowsPerPageOptions={PAGE_SIZE}
               rowsPerPage={rowsPerPage}
-              count={data.users.data.length}
+              count={count}
               onPageChange={handleChangePage}
               onRowsPerPageChange={handleChangeRowsPerPage}
             />
@@ -385,14 +415,12 @@ function App() {
       />
       <Modal openModal={openModal} setOpenModal={setOpenModal}>
         <UserForm
-          values={values}
-          handleInputChange={handleInputChange}
           setOpenModal={setOpenModal}
           userForEdit={userForEdit}
-          setValues={setValues}
           updateUser={updateUser}
           data={data}
           closeModal={closeModal}
+          formik={formik}
         />
       </Modal>
     </Box>
