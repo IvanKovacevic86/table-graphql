@@ -2,26 +2,10 @@ import { Box, Button, Grid, TextField } from "@mui/material";
 import React from "react";
 
 const UserForm = (props) => {
-  const { formik, updateUser, closeModal } = props;
-
-  const handleSubmit = (event) => {
-    event.preventDefault();
-
-    updateUser({
-      variables: {
-        id: formik.values.id,
-        input: {
-          name: formik.values.name,
-          username: formik.values.username,
-          email: formik.values.email,
-        },
-      },
-    });
-    closeModal();
-  };
+  const { formik, closeModal } = props;
 
   return (
-    <form onSubmit={handleSubmit}>
+    <form onSubmit={formik.handleSubmit}>
       <Grid container>
         <Grid item>
           <TextField

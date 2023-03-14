@@ -117,10 +117,9 @@ const initialValues = {
   email: "",
 };
 
-function App() {
+const App = () => {
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(PAGE_SIZE[page]);
-
   const [confirmDialog, setConfirmDialog] = useState({
     isOpen: false,
     title: "",
@@ -135,7 +134,10 @@ function App() {
   const [count, setCount] = useState(1);
 
   const { data, loading } = useQuery(GET_USERS, {
-    onCompleted: (data) => setFilteredUser(data.users.data),
+    onCompleted: (data) => {
+      setFilteredUser(data.users.data);
+      setCount(data.users.data.length);
+    },
   });
 
   const [createUser] = useMutation(CREATE_USER_MUTATION);
@@ -150,16 +152,30 @@ function App() {
       email: Yup.string().required("Email is required").email("Invalid email"),
     }),
     enableReinitialize: true,
-    onSubmit: () => {
-      createUser({
-        variables: {
-          input: {
-            name: formik.values.name,
-            username: formik.values.username,
-            email: formik.values.email,
+    onSubmit: (values) => {
+      if (openModal) {
+        updateUser({
+          variables: {
+            id: values.id,
+            input: {
+              name: values.name,
+              username: values.username,
+              email: values.email,
+            },
           },
-        },
-      });
+        });
+        closeModal();
+      } else {
+        createUser({
+          variables: {
+            input: {
+              name: values.name,
+              username: values.username,
+              email: values.email,
+            },
+          },
+        });
+      }
       formik.resetForm();
     },
   });
@@ -167,11 +183,11 @@ function App() {
   if (loading) return <div>Loading...</div>;
 
   const getNumberOfUsers = (data) => {
-    return data.users.data.length;
+    return data.length;
   };
 
   const openEditForm = (user) => {
-    setUserForEdit(user);
+    formik.setValues(user);
     setOpenModal(true);
   };
 
@@ -208,12 +224,15 @@ function App() {
     setSearch(e.target.value);
 
     const filtered = data.users.data.filter((item) =>
-      keys.some((key) => item[key].toLowerCase().includes(search.toLowerCase()))
+      keys.some((key) =>
+        item[key].toLowerCase().includes(e.target.value.toLowerCase())
+      )
     );
 
     setFilteredUser(filtered);
     setPage(0);
     setCount(getNumberOfUsers(filtered));
+    console.log(filtered);
   };
 
   const handleSortRequest = (column) => {
@@ -316,6 +335,7 @@ function App() {
               </InputAdornment>
             ),
           }}
+          value={search}
           placeholder="Search by Name or Email"
           variant="standard"
           onChange={handleSearch}
@@ -425,6 +445,6 @@ function App() {
       </Modal>
     </Box>
   );
-}
+};
 
 export default App;
